@@ -1,19 +1,6 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, InferSchemaType } from "mongoose";
 
-export interface ISystemSetting extends Document {
-  failedLoginMaxAttempts: number;
-  accountLockDurationMinutes: number;
-  withdrawalMinAmount: number;
-  withdrawalMaxAmount: number; 
-  providers?: {
-    paystack: boolean;
-    flutterwave: boolean;
-  };
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-const systemSettingSchema = new Schema<ISystemSetting>(
+const loginSettingsSchema = new Schema(
   {
     failedLoginMaxAttempts: {
       type: Number,
@@ -25,14 +12,29 @@ const systemSettingSchema = new Schema<ISystemSetting>(
       required: true,
       default: 15,
     },
-    withdrawalMinAmount: {
+  },
+  { _id: false }
+);
+
+
+const withdrawalSettingsSchema = new Schema(
+  {
+    minAmount: {
       type: Number,
       default: 100,
     },
-    withdrawalMaxAmount: {
+    maxAmount: {
       type: Number,
       default: 100000,
     },
+  },
+  { _id: false }
+);
+
+const systemSettingSchema = new Schema(
+  {
+    loginSettingsMeta: loginSettingsSchema,
+    withdrawalSettings: withdrawalSettingsSchema,
     providers: {
       paystack: { type: Boolean, default: true },
       flutterwave: { type: Boolean, default: true },
@@ -41,7 +43,9 @@ const systemSettingSchema = new Schema<ISystemSetting>(
   { timestamps: true }
 );
 
-export const SystemSetting = model<ISystemSetting>(
-  'SystemSetting',
+export type SystemSettingType = InferSchemaType<typeof systemSettingSchema>;
+
+export const SystemSetting = model<SystemSettingType>(
+  "SystemSetting",
   systemSettingSchema
 );

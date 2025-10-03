@@ -1,17 +1,20 @@
-import { SystemSetting, ISystemSetting } from '../models/systemSettings';
+import { SystemSetting, SystemSettingType } from "../models/systemSettings";
 
 export class SystemSettingRepository {
-  
-  async findSettings(): Promise<ISystemSetting | null> {
+  async findSettings(): Promise<SystemSettingType | null> {
     return await SystemSetting.findOne();
   }
 
-  async createDefaultSettings(): Promise<ISystemSetting> {
-    const defaultSettings: Partial<ISystemSetting> = {
-      failedLoginMaxAttempts: 5,
-      accountLockDurationMinutes: 15,
-      withdrawalMinAmount: 100,
-      withdrawalMaxAmount: 100000,
+  async createDefaultSettings(): Promise<SystemSettingType> {
+    const defaultSettings: Partial<SystemSettingType> = {
+      loginSettingsMeta: {
+        failedLoginMaxAttempts: 5,
+        accountLockDurationMinutes: 15,
+      },
+      withdrawalSettings: {
+        minAmount: 100,
+        maxAmount: 100000,
+      },
       providers: {
         paystack: true,
         flutterwave: true,
@@ -23,8 +26,8 @@ export class SystemSettingRepository {
   }
 
   async updateSettings(
-    update: Partial<ISystemSetting>
-  ): Promise<ISystemSetting | null> {
+    update: Partial<SystemSettingType>
+  ): Promise<SystemSettingType | null> {
     return await SystemSetting.findOneAndUpdate({}, update, { new: true });
   }
 }

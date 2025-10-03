@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { JWTUtil } from "../utils/jwt";
-import ErrorResponse from "../utils/errorResponse";
+import { UnauthorizedException } from "../utils/exceptions";
 
 export interface AuthenticatedRequest extends Request {
   user: {
@@ -17,7 +17,7 @@ export const userAuth = async (
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new ErrorResponse("No token provided or invalid format", 401);
+      throw new UnauthorizedException("No token provided or invalid format");
     }
 
     const token = JWTUtil.extractTokenFromHeader(authHeader);

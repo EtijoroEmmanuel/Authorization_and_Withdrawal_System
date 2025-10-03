@@ -12,7 +12,7 @@ export interface IENVIRONMENT {
     };
     AUTH:{
       JWT_SECRET: string,
-      JWT_EXPIRES:number,
+      JWT_EXPIRES:string,
       BCRYPT_SALT_ROUNDS:number
     };
    REDIS_URL:string;

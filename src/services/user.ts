@@ -1,25 +1,24 @@
 import bcrypt from "bcrypt";
 import UserRepository from "../repositories/user";
-import { SystemSettingUseCase } from "./systemSettings";
+import { SystemSettingService } from "./systemSettings";
 import { JWTUtil } from "../utils/jwt";
 import { env } from "../config/env";
-import ErrorResponse from "../utils/errorResponse";
 import { redisClient } from "../utils/redis";
+import ErrorResponse from "../utils/errorResponse";
+import { UserRole, UserType } from "../models/user";
 
-export class UserUseCase {
+export class UserService {
   private userRepository: UserRepository;
-  private systemSettingUseCase: SystemSettingUseCase;
+  private systemSettingService: SystemSettingService;
 
   constructor() {
     this.userRepository = new UserRepository();
-    this.systemSettingUseCase = new SystemSettingUseCase();
+    this.systemSettingService = new SystemSettingService();
   }
 
   async register(fullName: string, email: string, password: string) {
     const existingUser = await this.userRepository.findByEmail(email);
-    if (existingUser) {
-      throw new ErrorResponse("Email already in use", 400);
-    }
+    if (existingUser) throw new ErrorResponse("Email already in use", 400);
 
     const salt = await bcrypt.genSalt(env.AUTH.BCRYPT_SALT_ROUNDS);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -28,14 +27,14 @@ export class UserUseCase {
       fullName,
       email,
       password: hashedPassword,
-      role: "user",
+      role: UserRole.USER,
       isLocked: false,
       failedLoginAttempts: 0,
       balance: { ledger: 0, available: 0 },
     });
 
     return {
-      id: user._id.toString(),
+      id: user._id,
       fullName: user.fullName,
       email: user.email,
     };
@@ -45,9 +44,13 @@ export class UserUseCase {
     const user = await this.userRepository.findByEmail(email);
     if (!user) throw new ErrorResponse("Invalid credentials", 401);
 
-    const settings = await this.systemSettingUseCase.getSettings();
-    const MAX_FAILED_ATTEMPTS = settings.failedLoginMaxAttempts;
-    const LOCK_TIME_MINUTES = settings.accountLockDurationMinutes;
+    const settings = await this.systemSettingService.getSettings();
+    if (!settings?.loginSettingsMeta) {
+      throw new ErrorResponse("Login settings not configured", 500);
+    }
+
+    const MAX_FAILED_ATTEMPTS = settings.loginSettingsMeta.failedLoginMaxAttempts;
+    const LOCK_TIME_MINUTES = settings.loginSettingsMeta.accountLockDurationMinutes;
 
     const attemptsKey = `login_attempts:${user._id}`;
     const lockKey = `lock_until:${user._id}`;
@@ -61,7 +64,6 @@ export class UserUseCase {
       }
     }
 
-    
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       let attemptsStr = await redisClient.get(attemptsKey);
@@ -81,15 +83,12 @@ export class UserUseCase {
     await redisClient.del(attemptsKey);
     await redisClient.del(lockKey);
 
-    const token = JWTUtil.generateToken({
-      userId: user._id.toString(),
-      role: user.role,
-    });
+    const token = JWTUtil.generateToken({ userId: user._id, role: user.role });
 
     return {
       token,
       user: {
-        id: user._id.toString(),
+        id: user._id,
         fullName: user.fullName,
         email: user.email,
       },
@@ -101,7 +100,7 @@ export class UserUseCase {
     if (!user) throw new ErrorResponse("User not found", 404);
 
     return {
-      id: user._id.toString(),
+      id: user._id,
       fullName: user.fullName,
       email: user.email,
       balance: user.balance,

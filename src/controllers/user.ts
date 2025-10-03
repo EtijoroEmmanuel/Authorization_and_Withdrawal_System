@@ -1,19 +1,15 @@
 import { Request, Response, NextFunction } from "express";
 import asyncHandler from "../middlewares/async";
-import { UserUseCase } from "../usecases/user";
+import { UserService } from "../services/user";
 import ErrorResponse from "../utils/errorResponse";
 
-const userUseCase = new UserUseCase();
+const userService = new UserService();
 
 export const registerUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { fullName, email, password } = req.body;
 
-    if (!fullName || !email || !password) {
-      return next(new ErrorResponse("Missing required fields", 400));
-    }
-
-    const user = await userUseCase.register(fullName, email, password);
+    const user = await userService.register(fullName, email, password);
 
     res.status(201).json({
       success: true,
@@ -26,11 +22,8 @@ export const loginUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return next(new ErrorResponse("Missing email or password", 400));
-    }
-
-    const result = await userUseCase.login(email, password);
+   
+    const result = await userService.login(email, password);
 
     res.status(200).json({
       success: true,
@@ -39,17 +32,17 @@ export const loginUser = asyncHandler(
   }
 );
 
-
 export const getUserInfo = asyncHandler(
-  async (req, res, next) => {
-    
-    const reqUser = req as unknown as Express.Request & { user: { id: string; role: "user" | "admin" } };
+  async (req: Request, res: Response, next: NextFunction) => {
+    const reqUser = req as unknown as Express.Request & {
+      user: { id: string; role: "user" | "admin" };
+    };
 
-    if (!reqUser.user || !reqUser.user.id) {
+   if (!reqUser.user) {
       return next(new ErrorResponse("Unauthorized", 401));
     }
 
-    const user = await userUseCase.getUserInfo(reqUser.user.id);
+    const user = await userService.getUserInfo(reqUser.user.id);
 
     res.status(200).json({
       success: true,
@@ -57,5 +50,3 @@ export const getUserInfo = asyncHandler(
     });
   }
 );
-
-

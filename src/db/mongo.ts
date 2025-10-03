@@ -5,10 +5,13 @@ const connectDB = async () => {
   try {
     const conn = await mongoose.connect(env.DB.URL);
     console.log(`✅ MongoDB Connected: ${conn.connection.name} (${env.APP.ENV} environment)`);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (error instanceof Error) {
     console.error(`❌ Unable to connect to the database: ${error.message}`);
-    process.exit(1);
+  } else {
+    console.error("❌ Unable to connect to the database: Unknown error", error);
   }
-};
-
+  process.exit(1);
+}
+}
 export default connectDB;

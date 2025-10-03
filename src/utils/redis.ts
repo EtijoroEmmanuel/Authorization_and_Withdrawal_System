@@ -1,14 +1,13 @@
 import Redis from "ioredis";
 import { env } from "../config/env";
+import { logger } from "../utils/logger";
 
-const redisUrl = env.REDIS_URL || "redis://localhost:6379";
-
-export const redisClient = new Redis(redisUrl);
+export const redisClient = new Redis(env.REDIS_URL);
 
 redisClient.on("connect", () => {
-  console.log("✅ Redis connected successfully");
+  logger.info("✅ Connected to Redis");
 });
 
 redisClient.on("error", (err) => {
-  console.error("❌ Redis connection error:", err);
+  logger.error({ err }, "❌ Redis error");
 });

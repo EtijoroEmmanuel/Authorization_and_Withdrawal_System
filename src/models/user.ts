@@ -1,23 +1,11 @@
-import { Schema, model, Document, Types } from 'mongoose';
+import { Schema, model, InferSchemaType } from "mongoose";
 
-export interface IUser extends Document {
-  _id: Types.ObjectId;
-  fullName: string;
-  email: string;
-  password: string;
-  role: 'user' | 'admin';
-  isLocked: boolean;
-  failedLoginAttempts: number;
-  lockUntil?: Date | null;
-  balance: {
-    ledger: number;
-    available: number; 
-  };
-  createdAt?: Date;
-  updatedAt?: Date;
+export enum UserRole {
+  USER = "user",
+  ADMIN = "admin",
 }
 
-const userSchema = new Schema<IUser>(
+const userSchema = new Schema(
   {
     fullName: {
       type: String,
@@ -34,12 +22,12 @@ const userSchema = new Schema<IUser>(
     password: {
       type: String,
       required: true,
-      minlength: 6,
+      minlength: 4,
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
-      default: 'user',
+      enum: Object.values(UserRole),
+      default: UserRole.USER,
     },
     isLocked: {
       type: Boolean,
@@ -61,4 +49,6 @@ const userSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-export const User = model<IUser>('User', userSchema);
+export type UserType = InferSchemaType<typeof userSchema> & { _id: string };
+
+export const User = model<UserType>("User", userSchema);
