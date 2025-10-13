@@ -5,11 +5,13 @@ import { env } from "../config/env";
 async function seedSystemSettings() {
   try {
     await mongoose.connect(env.DB.URL);
-
     console.log("Connected to MongoDB");
 
-    await SystemSetting.deleteMany({});
-    console.log("Cleared existing SystemSettings");
+    const existing = await SystemSetting.findOne();
+    if (existing) {
+      console.log("SystemSettings already exist. Skipping seeding.");
+      process.exit(0);
+    }
 
     const defaultSettings = new SystemSetting({
       loginSettingsMeta: {
@@ -20,7 +22,7 @@ async function seedSystemSettings() {
         minAmount: 100,
         maxAmount: 100000,
       },
-      providers: {
+      paymentProviders: {
         paystack: true,
         flutterwave: true,
       },

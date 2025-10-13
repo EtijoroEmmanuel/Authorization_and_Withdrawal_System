@@ -1,23 +1,22 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, RequestHandler } from "express";
 import { JWTUtil } from "../utils/jwt";
 import { UnauthorizedException } from "../utils/exceptions";
+import { UserRole } from "../models/user";
 
 export interface AuthenticatedRequest extends Request {
-  user: {
+  user?: {
     id: string;
-    role: "user" | "admin";
+    role: UserRole;
   };
 }
 
-export const userAuth = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const userAuth: RequestHandler = (req, _res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new UnauthorizedException("No token provided or invalid format");
+      throw new UnauthorizedException(
+        "Invalid or missing Authorization header"
+      );
     }
 
     const token = JWTUtil.extractTokenFromHeader(authHeader);
@@ -25,7 +24,7 @@ export const userAuth = async (
 
     (req as AuthenticatedRequest).user = {
       id: decoded.userId,
-      role: decoded.role,
+      role: decoded.role as UserRole,
     };
 
     next();
@@ -33,3 +32,13 @@ export const userAuth = async (
     next(err);
   }
 };
+
+export const authorizeRole =
+  (roles: UserRole[]): RequestHandler =>
+  (req, _res, next) => {
+    const user = (req as AuthenticatedRequest).user;
+    if (!user || !roles.includes(user.role)) {
+      throw new UnauthorizedException("Insufficient permissions");
+    }
+    next();
+  };

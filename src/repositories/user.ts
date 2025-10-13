@@ -1,32 +1,35 @@
-import { User, UserType } from "../models/user";
+import { User, UserType, CreateUserInput } from "../models/user";
+import { BaseRepository } from "./baseRepository";
 
-export default class UserRepository {
-  async createUser(data: Partial<UserType>): Promise<UserType> {
+export class UserRepository extends BaseRepository<UserType> {
+  constructor() {
+    super(User);
+  }
+
+  async findByEmail(email: string): Promise<UserType | null> {
+    return this.findOne({ email });
+  }
+
+  async createUser(data: CreateUserInput): Promise<UserType> {
     const user = new User(data);
     return await user.save();
   }
 
-  async findByEmail(email: string): Promise<UserType | null> {
-    return User.findOne({ email });
+  async incrementFailedLoginAttempts(id: string): Promise<void> {
+    await this.model.updateOne(
+      { _id: id },
+      { $inc: { failedLoginAttempts: 1 } }
+    );
   }
 
-  async findById(id: string): Promise<UserType | null> {
-    return User.findById(id);
+  async resetFailedLoginAttempts(id: string): Promise<void> {
+    await this.model.updateOne(
+      { _id: id },
+      { $set: { failedLoginAttempts: 0 } }
+    );
   }
 
-  async updateFailedLoginAttempts(id: string, attempts: number): Promise<void> {
-    await User.findByIdAndUpdate(id, { failedLoginAttempts: attempts });
-  }
-
-  async updateLockStatus(id: string, isLocked: boolean, lockUntil: Date | null = null): Promise<void> {
-    await User.findByIdAndUpdate(id, { isLocked, lockUntil });
-  }
-
-  async updateLastLogin(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, { updatedAt: new Date() });
-  }
-
-  async updateBalance(id: string, ledger: number, available: number): Promise<void> {
-    await User.findByIdAndUpdate(id, { balance: { ledger, available } });
+  async update(id: string, data: Partial<UserType>): Promise<UserType | null> {
+    return this.findByIdAndUpdate(id, data);
   }
 }

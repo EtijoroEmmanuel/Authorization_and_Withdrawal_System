@@ -16,7 +16,6 @@ const loginSettingsSchema = new Schema(
   { _id: false }
 );
 
-
 const withdrawalSettingsSchema = new Schema(
   {
     minAmount: {
@@ -35,7 +34,7 @@ const systemSettingSchema = new Schema(
   {
     loginSettingsMeta: loginSettingsSchema,
     withdrawalSettings: withdrawalSettingsSchema,
-    providers: {
+    paymentProviders: {
       paystack: { type: Boolean, default: true },
       flutterwave: { type: Boolean, default: true },
     },

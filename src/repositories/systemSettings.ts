@@ -1,8 +1,18 @@
 import { SystemSetting, SystemSettingType } from "../models/systemSettings";
+import { BaseRepository } from "./baseRepository";
+import { NotFoundException } from "../utils/exceptions";
 
-export class SystemSettingRepository {
-  async findSettings(): Promise<SystemSettingType | null> {
-    return await SystemSetting.findOne();
+export class SystemSettingRepository extends BaseRepository<SystemSettingType> {
+  constructor() {
+    super(SystemSetting);
+  }
+
+  async findSettings(): Promise<SystemSettingType> {
+    const settings = await this.findOne({});
+    if (!settings) {
+      throw new NotFoundException("System settings not found");
+    }
+    return settings;
   }
 
   async createDefaultSettings(): Promise<SystemSettingType> {
@@ -15,19 +25,22 @@ export class SystemSettingRepository {
         minAmount: 100,
         maxAmount: 100000,
       },
-      providers: {
+      paymentProviders: {
         paystack: true,
         flutterwave: true,
       },
     };
 
-    const settings = new SystemSetting(defaultSettings);
-    return await settings.save();
+    return this.create(defaultSettings);
   }
 
   async updateSettings(
     update: Partial<SystemSettingType>
-  ): Promise<SystemSettingType | null> {
-    return await SystemSetting.findOneAndUpdate({}, update, { new: true });
+  ): Promise<SystemSettingType> {
+    const updated = await this.findOneAndUpdate({}, update);
+    if (!updated) {
+      throw new NotFoundException("System settings not found to update");
+    }
+    return updated;
   }
 }

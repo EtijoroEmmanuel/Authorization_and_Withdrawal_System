@@ -1,14 +1,14 @@
 import { Response } from "express";
 
-export function AppResponse(
+export function SuccessResponse(
   res: Response,
-  statusCode: number = 200,
-  data: Record<string, string[]> | unknown | string | null,
-  message: string,
+  data: unknown,
+  message = "Request successful",
+  statusCode = 200
 ) {
-  res.status(statusCode).json({
-    status: "success",
-    message: message ?? "Success",
-    data: data ?? null,
+  return res.status(statusCode).json({
+    success: true,
+    message,
+    data,
   });
 }

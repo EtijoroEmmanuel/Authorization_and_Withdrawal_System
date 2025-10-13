@@ -45,10 +45,36 @@ const userSchema = new Schema(
       ledger: { type: Number, default: 0 },
       available: { type: Number, default: 0 },
     },
+    lastLoginAttempt: {
+      type: Date,
+      default: null,
+    },
+    lastLoginAttemptSuccessful: {
+      type: Boolean,
+      default: false,
+    },
+    lastLoginTimestamp: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
 
 export type UserType = InferSchemaType<typeof userSchema> & { _id: string };
+
+export interface CreateUserInput {
+  fullName: string;
+  email: string;
+  password: string;
+  role?: UserRole;
+  isLocked?: boolean;
+  failedLoginAttempts?: number;
+  lockUntil?: Date | null;
+  balance?: { ledger: number; available: number };
+  lastLoginAttempt?: Date | null;
+  lastLoginAttemptSuccessful?: boolean;
+  lastLoginTimestamp?: Date | null;
+}
 
 export const User = model<UserType>("User", userSchema);

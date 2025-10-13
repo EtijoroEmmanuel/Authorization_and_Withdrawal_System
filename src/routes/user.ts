@@ -4,7 +4,6 @@ import { userAuth } from "../middlewares/authMiddleware";
 
 const router = Router();
 
-
 router.get("/info", userAuth, getUserInfo);
 
 export default router;
