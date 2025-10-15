@@ -1,6 +1,6 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { env } from "../config/env";
-import ErrorResponse from "../utils/errorResponse";
+import ErrorResponse from "./errorResponse";
 
 interface TokenPayload {
   userId: string;

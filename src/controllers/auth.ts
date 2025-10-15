@@ -9,12 +9,6 @@ export const registerUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { fullName, email, password } = req.body;
 
-    if (!fullName || !email || !password) {
-      return next(
-        new ErrorResponse("Full name, email, and password are required", 400)
-      );
-    }
-
     const user = await authService.register(fullName, email, password);
 
     res.status(201).json({
@@ -27,10 +21,6 @@ export const registerUser = asyncHandler(
 export const loginUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return next(new ErrorResponse("Email and password are required", 400));
-    }
 
     const result = await authService.login(email, password);
 

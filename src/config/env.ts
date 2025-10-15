@@ -4,7 +4,7 @@ export enum Environment {
 }
 
 import * as dotenv from "dotenv";
-import { IENVIRONMENT } from "../interface";
+import {IENVIRONMENT} from "../interface";
 
 dotenv.config();
 

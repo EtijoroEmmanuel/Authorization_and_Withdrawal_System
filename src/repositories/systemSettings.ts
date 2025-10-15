@@ -12,10 +12,7 @@ export class SystemSettingRepository extends BaseRepository<SystemSettingType> {
     if (!settings) {
       throw new NotFoundException("System settings not found");
     }
-    return settings;
-  }
 
-  async createDefaultSettings(): Promise<SystemSettingType> {
     const defaultSettings: Partial<SystemSettingType> = {
       loginSettingsMeta: {
         failedLoginMaxAttempts: 5,
@@ -31,16 +28,20 @@ export class SystemSettingRepository extends BaseRepository<SystemSettingType> {
       },
     };
 
-    return this.create(defaultSettings);
+    return { ...defaultSettings, ...settings };
   }
 
   async updateSettings(
     update: Partial<SystemSettingType>
   ): Promise<SystemSettingType> {
-    const updated = await this.findOneAndUpdate({}, update);
-    if (!updated) {
-      throw new NotFoundException("System settings not found to update");
+    const updatedSettings = await this.findOneAndUpdate({}, update, {
+      new: true,
+      upsert: true,
+    });
+    if (!updatedSettings) {
+      throw new NotFoundException("System settings not found");
     }
-    return updated;
+
+    return updatedSettings;
   }
 }

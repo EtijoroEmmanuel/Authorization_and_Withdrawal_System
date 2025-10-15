@@ -1,11 +1,12 @@
+import { Environment } from "./config/env";
+
 export interface IENVIRONMENT {
   APP: {
     NAME: string;
     PORT: number;
-    ENV: string;
+    ENV: Environment;
     CLIENT?: string;
   };
-
   DB: {
     URL: string;
   };

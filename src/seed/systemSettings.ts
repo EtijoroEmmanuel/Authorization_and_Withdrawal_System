@@ -1,15 +1,17 @@
 import mongoose from "mongoose";
 import { SystemSetting } from "../models/systemSettings";
 import { env } from "../config/env";
+import { logger } from "../utils/logger";
 
 async function seedSystemSettings() {
   try {
     await mongoose.connect(env.DB.URL);
-    console.log("Connected to MongoDB");
+    logger.info("Connected to MongoDB");
 
     const existing = await SystemSetting.findOne();
     if (existing) {
-      console.log("SystemSettings already exist. Skipping seeding.");
+      logger.info("SystemSettings already exist. Skipping seeding.");
+      await mongoose.connection.close();
       process.exit(0);
     }
 
@@ -29,11 +31,14 @@ async function seedSystemSettings() {
     });
 
     await defaultSettings.save();
-    console.log("Default SystemSettings seeded successfully");
+    logger.info("Default SystemSettings seeded successfully");
 
-    process.exit(0);
-  } catch (err) {
-    console.error("Error seeding system settings:", err);
+    await mongoose.connection.close();
+  } catch (err: unknown) {
+    const errorMessage =
+      err instanceof Error ? err.message : "Unknown error occurred";
+    logger.error(`Error seeding system settings: ${errorMessage}`);
+    await mongoose.connection.close();
     process.exit(1);
   }
 }

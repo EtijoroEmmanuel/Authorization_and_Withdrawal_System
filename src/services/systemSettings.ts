@@ -9,18 +9,12 @@ export class SystemSettingService {
   }
 
   async getSettings(): Promise<SystemSettingType> {
-    let settings = await this.repository.findSettings();
-
-    if (!settings) {
-      settings = await this.repository.createDefaultSettings();
-    }
-
-    return settings;
+    return await this.repository.findSettings();
   }
 
   async updateSettings(
     update: Partial<SystemSettingType>
-  ): Promise<SystemSettingType | null> {
+  ): Promise<SystemSettingType> {
     return await this.repository.updateSettings(update);
   }
 }
