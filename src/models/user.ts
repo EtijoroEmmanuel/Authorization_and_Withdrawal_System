@@ -40,6 +40,7 @@ const userSchema = new Schema(
     lockUntil: {
       type: Date,
       default: null,
+      required: false,
     },
     balance: {
       ledger: { type: Number, default: 0 },
@@ -48,6 +49,7 @@ const userSchema = new Schema(
     lastLoginAttempt: {
       type: Date,
       default: null,
+      required: false,
     },
     lastLoginAttemptSuccessful: {
       type: Boolean,
@@ -56,6 +58,7 @@ const userSchema = new Schema(
     lastLoginTimestamp: {
       type: Date,
       default: null,
+      required: false,
     },
   },
   { timestamps: true }
@@ -72,8 +75,8 @@ export interface CreateUserInput {
   failedLoginAttempts?: number;
   lockUntil?: Date | null;
   balance?: { ledger: number; available: number };
-  lastLoginAttempt?: Date | null;
   lastLoginAttemptSuccessful?: boolean;
+  lastLoginAttempt?: Date | null;
   lastLoginTimestamp?: Date | null;
 }
 

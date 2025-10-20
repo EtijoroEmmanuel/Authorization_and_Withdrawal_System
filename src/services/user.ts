@@ -1,6 +1,8 @@
+import { Response, NextFunction } from "express";
 import { BaseRepository } from "../repositories/baseRepository";
-import { User, UserType, CreateUserInput } from "../models/user";
-import { NotFoundException } from "../utils/exceptions";
+import { User, UserType } from "../models/user";
+import { NotFoundException, UnauthorizedException } from "../utils/exceptions";
+import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 
 export class UserService {
   private repository: BaseRepository<UserType>;
@@ -9,34 +11,37 @@ export class UserService {
     this.repository = new BaseRepository<UserType>(User);
   }
 
-  async getUserInfo(userId: string) {
-    const user = await this.repository.findById(userId);
+  async getUserInfo(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    if (!req.user?.id) {
+      return next(new UnauthorizedException("Unauthorized"));
+    }
+
+    const user = await this.repository.findById(req.user.id);
     if (!user) throw new NotFoundException("User not found");
 
-    return {
-      id: user._id,
-      fullName: user.fullName,
-      email: user.email,
-      balance: user.balance,
-      lastLoginAttempt: user.lastLoginAttempt,
-      lastLoginAttemptSuccessful: user.lastLoginAttemptSuccessful,
-      lastLoginTimestamp: user.lastLoginTimestamp,
-    };
+    res.status(200).json({
+      success: true,
+      data: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        balance: user.balance,
+        lastLoginAttempt: user.lastLoginAttempt,
+        lastLoginAttemptSuccessful: user.lastLoginAttemptSuccessful,
+        lastLoginTimestamp: user.lastLoginTimestamp,
+      },
+    });
   }
 
   async findByEmail(email: string): Promise<UserType | null> {
     return await this.repository.findOne({ email });
   }
 
-  async createUser(data: CreateUserInput): Promise<UserType> {
-    const user = new User(data);
-    return await user.save();
-  }
-
-  async updateUser(
-    userId: string,
-    update: Record<string, unknown>
-  ): Promise<UserType | null> {
-    return await this.repository.findByIdAndUpdate(userId, update);
+  async createUser(data: Partial<UserType>): Promise<UserType> {
+    return await User.create(data);
   }
 }
