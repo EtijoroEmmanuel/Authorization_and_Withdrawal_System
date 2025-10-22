@@ -9,7 +9,7 @@ export class SystemSettingService {
   }
 
   async getSettings(): Promise<SystemSettingType> {
-    return await this.repository.findSettings();
+    return await this.repository.getSettings();
   }
 
   async updateSettings(

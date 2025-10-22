@@ -20,5 +20,5 @@ export interface IENVIRONMENT {
 
 export interface ExtendedError extends Error {
   statusCode?: number;
-  errors?: any;
+  errors?: unknown;
 }

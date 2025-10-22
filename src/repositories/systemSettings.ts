@@ -7,7 +7,7 @@ export class SystemSettingRepository extends BaseRepository<SystemSettingType> {
     super(SystemSetting);
   }
 
-  async findSettings(): Promise<SystemSettingType> {
+  async getSettings(): Promise<SystemSettingType> {
     const settings = await this.findOne({});
     if (!settings) {
       throw new NotFoundException("System settings not found");
@@ -38,10 +38,7 @@ export class SystemSettingRepository extends BaseRepository<SystemSettingType> {
       new: true,
       upsert: true,
     });
-    if (!updatedSettings) {
-      throw new NotFoundException("System settings not found");
-    }
 
-    return updatedSettings;
+    return updatedSettings!;
   }
 }
