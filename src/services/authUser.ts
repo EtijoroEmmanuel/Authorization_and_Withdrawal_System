@@ -47,7 +47,6 @@ export class AuthService {
         role: UserRole.USER,
         isLocked: false,
         failedLoginAttempts: 0,
-        balance: { ledger: 0, available: 0 },
         lastLoginAttempt: null,
         lastLoginAttemptSuccessful: false,
         lastLoginTimestamp: null,
@@ -158,7 +157,7 @@ export class AuthService {
       await redisClient.del(lockKey);
 
       const token = JWTUtil.generateToken({
-        userId: user._id,
+        userId: user._id.toString(),
         role: user.role,
       });
 
