@@ -1,5 +1,4 @@
-import { Schema, model, Types, Document } from "mongoose";
-import { Wallet } from "./wallet";
+import { Schema, model, Types, InferSchemaType, Document } from "mongoose";
 
 export enum UserRole {
   USER = "user",
@@ -33,49 +32,9 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-export interface IUser extends Document {
-  _id: Types.ObjectId;
-  fullName: string;
-  email: string;
-  password: string;
-  role: UserRole;
-  isLocked: boolean;
-  failedLoginAttempts: number;
-  lockUntil?: Date | null;
-  wallet?: Types.ObjectId | null;
-  lastLoginAttempt?: Date | null;
-  lastLoginAttemptSuccessful?: boolean;
-  lastLoginTimestamp?: Date | null;
-}
+export type UserDocument = InferSchemaType<typeof userSchema> &
+  Document & {
+    _id: Types.ObjectId;
+  };
 
-export type UserType = IUser;
-
-export interface CreateUserInput {
-  fullName: string;
-  email: string;
-  password: string;
-  role?: UserRole;
-  isLocked?: boolean;
-  failedLoginAttempts?: number;
-  lockUntil?: Date | null;
-  wallet?: Types.ObjectId | null;
-  lastLoginAttemptSuccessful?: boolean;
-  lastLoginAttempt?: Date | null;
-  lastLoginTimestamp?: Date | null;
-}
-
-userSchema.post<IUser>("save", async function (doc) {
-  if (!doc.wallet) {
-    const wallet = await Wallet.create({
-      user: doc._id,
-      ledger: 0,
-      available: 0,
-      currency: "NGN",
-    });
-
-    doc.wallet = wallet._id as unknown as Types.ObjectId;
-    await doc.save();
-  }
-});
-
-export const User = model<IUser>("User", userSchema);
+export const User = model<UserDocument>("User", userSchema);

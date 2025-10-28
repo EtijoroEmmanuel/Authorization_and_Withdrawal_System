@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
-import { User, UserType, UserRole } from "../models/user";
+import { User, UserDocument, UserRole } from "../models/user";
+import { Wallet } from "../models/wallet";
 import { BaseRepository } from "../repositories/baseRepository";
-import { UserService } from "./user";
 import { SystemSettingService } from "./systemSettings";
 import { JWTUtil } from "../utils/jwt";
 import { env } from "../config/env";
@@ -15,13 +15,11 @@ import {
 } from "../utils/exceptions";
 
 export class AuthService {
-  private userService: UserService;
-  private userRepository: BaseRepository<UserType>;
+  private userRepository: BaseRepository<UserDocument>;
   private systemSettingService: SystemSettingService;
 
   constructor() {
-    this.userService = new UserService();
-    this.userRepository = new BaseRepository<UserType>(User);
+    this.userRepository = new BaseRepository<UserDocument>(User);
     this.systemSettingService = new SystemSettingService();
   }
 
@@ -34,22 +32,35 @@ export class AuthService {
       const { fullName, email, password } = req.body;
       const dbEmail = email.toLowerCase();
 
-      const existingUser = await this.userService.findByEmail(dbEmail);
+      const existingUser = await this.userRepository.findOne({
+        email: dbEmail,
+      });
       if (existingUser) throw new BadRequestException("Email already in use");
 
       const salt = await bcrypt.genSalt(env.AUTH.BCRYPT_SALT_ROUNDS);
       const hashedPassword = await bcrypt.hash(password, salt);
 
-      const user = await this.userService.createUser({
+      const user: UserDocument = await this.userRepository.create({
         fullName,
         email: dbEmail,
         password: hashedPassword,
         role: UserRole.USER,
         isLocked: false,
         failedLoginAttempts: 0,
-        lastLoginAttempt: null,
+        lastLoginAttempt: undefined,
         lastLoginAttemptSuccessful: false,
-        lastLoginTimestamp: null,
+        lastLoginTimestamp: undefined,
+      });
+
+      const wallet = await Wallet.create({
+        user: user._id,
+        ledger: 0,
+        available: 0,
+        currency: "NGN",
+      });
+
+      await this.userRepository.findByIdAndUpdate(user._id.toString(), {
+        wallet: wallet._id,
       });
 
       res.status(201).json({
@@ -58,6 +69,7 @@ export class AuthService {
           id: user._id,
           fullName: user.fullName,
           email: user.email,
+          walletId: wallet._id,
         },
       });
     } catch (error) {
@@ -70,7 +82,9 @@ export class AuthService {
       const { email, password } = req.body;
       const dbEmail = email.toLowerCase();
 
-      const user = await this.userService.findByEmail(dbEmail);
+      const user: UserDocument | null = await this.userRepository.findOne({
+        email: dbEmail,
+      });
       if (!user) throw new UnauthorizedException("Invalid credentials");
 
       const settings = await this.systemSettingService.getSettings();

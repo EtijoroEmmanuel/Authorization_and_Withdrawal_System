@@ -1,20 +1,31 @@
 import { Schema, model, Types, InferSchemaType, Document } from "mongoose";
+import { User } from "./user";
 
-export interface IWallet extends Document {
-  user: Types.ObjectId;
-  ledger: number;
-  available: number;
-  currency: string;
+export enum Currency {
+  NGN = "NGN",
+  USD = "USD",
+  EUR = "EUR",
+  GBP = "GBP",
 }
 
-const walletSchema = new Schema<IWallet>(
+const walletSchema = new Schema(
   {
-    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    user: { type: Schema.Types.ObjectId, ref: User.name, required: true },
     ledger: { type: Number, default: 0 },
     available: { type: Number, default: 0 },
-    currency: { type: String, default: "NGN" },
+    currency: {
+      type: String,
+      enum: Object.values(Currency),
+      default: Currency.NGN,
+      required: true,
+    },
   },
   { timestamps: true }
 );
 
-export const Wallet = model<IWallet>("Wallet", walletSchema);
+export type WalletDocument = InferSchemaType<typeof walletSchema> &
+  Document & {
+    _id: Types.ObjectId;
+  };
+
+export const Wallet = model<WalletDocument>("Wallet", walletSchema);

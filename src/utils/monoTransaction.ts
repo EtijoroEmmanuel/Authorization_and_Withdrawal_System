@@ -4,21 +4,27 @@ export async function withMongoTransaction<T>(
   callback: (session: mongoose.ClientSession) => Promise<T>
 ): Promise<T> {
   const session = await mongoose.startSession();
-  let result: T | undefined = undefined;
 
   try {
-    await session.withTransaction(async () => {
-      result = await callback(session);
-    });
+    let result: T | null = null;
 
-    if (result === undefined) {
+    await session.withTransaction(
+      async () => {
+        result = await callback(session);
+      },
+      {
+        readPreference: "primary",
+        writeConcern: { w: "majority" },
+        readConcern: { level: "majority" },
+      }
+    );
+
+    if (result === null) {
       throw new Error("Transaction did not return a result");
     }
 
     return result;
-  } catch (error) {
-    throw error;
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 }

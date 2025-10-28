@@ -1,4 +1,4 @@
-import { Schema, model, Types, Document } from "mongoose";
+import { Schema, model, Types, InferSchemaType } from "mongoose";
 
 export enum TransactionType {
   CREDIT = "CREDIT",
@@ -12,22 +12,7 @@ export enum TransactionStatus {
   REVERSED = "REVERSED",
 }
 
-export interface ITransaction extends Document {
-  user: Types.ObjectId;
-  wallet: Types.ObjectId;
-  amount: number;
-  type: TransactionType;
-  status: TransactionStatus;
-  reference: string;
-  balanceBefore: number;
-  balanceAfter: number;
-  currency: string;
-  meta?: Record<string, any>;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const transactionSchema = new Schema<ITransaction>(
+const transactionSchema = new Schema(
   {
     user: { type: Schema.Types.ObjectId, ref: "User", required: true },
     wallet: { type: Schema.Types.ObjectId, ref: "Wallet", required: true },
@@ -52,7 +37,9 @@ const transactionSchema = new Schema<ITransaction>(
   { timestamps: true }
 );
 
-export const Transaction = model<ITransaction>(
+export type TransactionDocument = InferSchemaType<typeof transactionSchema>;
+
+export const Transaction = model<TransactionDocument>(
   "Transaction",
   transactionSchema
 );
