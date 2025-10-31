@@ -1,55 +1,63 @@
 import { Response, NextFunction } from "express";
 import { BaseRepository } from "../repositories/baseRepository";
 import { User, UserDocument } from "../models/user";
-import { Wallet, WalletDocument } from "../models/wallet";
 import { NotFoundException, UnauthorizedException } from "../utils/exceptions";
 import { AuthenticatedRequest } from "../middlewares/authMiddleware";
+import { WalletService } from "./wallet";
+import mongoose from "mongoose";
 
-export class UserService {
-  private repository: BaseRepository<UserDocument>;
+export class UserService extends BaseRepository<UserDocument> {
+  private walletService: WalletService;
 
   constructor() {
-    this.repository = new BaseRepository<UserDocument>(User);
+    super(User);
+    this.walletService = new WalletService();
   }
 
   async getUserInfo(
     req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
-  ) {
-    if (!req.user?.id) {
-      return next(new UnauthorizedException("Unauthorized"));
-    }
+  ): Promise<void> {
+    try {
+      
+      if (!req.user?.id) {
+        return next(new UnauthorizedException("Unauthorized"));
+      }
 
-    const user = await this.repository.findById(req.user.id);
-    if (!user) throw new NotFoundException("User not found");
+      const userId = new mongoose.Types.ObjectId(req.user.id);
 
-    const wallet: WalletDocument | null = await Wallet.findOne({
-      user: user._id,
-    });
-    if (!wallet) {
-      throw new NotFoundException("User wallet not found");
-    }
+      
+      const user = await this.findById(userId);
+      if (!user) {
+        throw new NotFoundException("User not found");
+      }
 
-    res.status(200).json({
-      success: true,
-      data: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        balance: {
-          ledger: wallet.ledger,
-          available: wallet.available,
-          currency: wallet.currency,
+      
+      const wallet = await this.walletService.getWalletByUserId(userId);
+      if (!wallet) {
+        throw new NotFoundException("User wallet not found");
+      }
+
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          balance: {
+            ledger: wallet.ledger,
+            available: wallet.available,
+            currency: wallet.currency,
+          },
+          lastLoginAttempt: user.lastLoginAttempt,
+          lastLoginAttemptSuccessful: user.lastLoginAttemptSuccessful,
+          lastLoginTimestamp: user.lastLoginTimestamp,
         },
-        lastLoginAttempt: user.lastLoginAttempt,
-        lastLoginAttemptSuccessful: user.lastLoginAttemptSuccessful,
-        lastLoginTimestamp: user.lastLoginTimestamp,
-      },
-    });
-  }
-
-  async findByEmail(email: string): Promise<UserDocument | null> {
-    return await this.repository.findOne({ email });
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 }

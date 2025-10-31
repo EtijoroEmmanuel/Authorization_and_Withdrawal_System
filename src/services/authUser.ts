@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
-import { User, UserDocument, UserRole } from "../models/user";
+import { UserDocument, UserRole } from "../models/user";
 import { Wallet } from "../models/wallet";
-import { BaseRepository } from "../repositories/baseRepository";
+import { UserService } from "./user";
 import { SystemSettingService } from "./systemSettings";
 import { JWTUtil } from "../utils/jwt";
 import { env } from "../config/env";
@@ -15,11 +15,11 @@ import {
 } from "../utils/exceptions";
 
 export class AuthService {
-  private userRepository: BaseRepository<UserDocument>;
+  private userService: UserService; // ✅ use UserService
   private systemSettingService: SystemSettingService;
 
   constructor() {
-    this.userRepository = new BaseRepository<UserDocument>(User);
+    this.userService = new UserService();
     this.systemSettingService = new SystemSettingService();
   }
 
@@ -32,15 +32,13 @@ export class AuthService {
       const { fullName, email, password } = req.body;
       const dbEmail = email.toLowerCase();
 
-      const existingUser = await this.userRepository.findOne({
-        email: dbEmail,
-      });
+      const existingUser = await this.userService.findOne({ email: dbEmail });
       if (existingUser) throw new BadRequestException("Email already in use");
 
       const salt = await bcrypt.genSalt(env.AUTH.BCRYPT_SALT_ROUNDS);
       const hashedPassword = await bcrypt.hash(password, salt);
 
-      const user: UserDocument = await this.userRepository.create({
+      const user: UserDocument = await this.userService.create({
         fullName,
         email: dbEmail,
         password: hashedPassword,
@@ -59,7 +57,7 @@ export class AuthService {
         currency: "NGN",
       });
 
-      await this.userRepository.findByIdAndUpdate(user._id.toString(), {
+      await this.userService.findByIdAndUpdate(user._id.toString(), {
         wallet: wallet._id,
       });
 
@@ -82,7 +80,7 @@ export class AuthService {
       const { email, password } = req.body;
       const dbEmail = email.toLowerCase();
 
-      const user: UserDocument | null = await this.userRepository.findOne({
+      const user: UserDocument | null = await this.userService.findOne({
         email: dbEmail,
       });
       if (!user) throw new UnauthorizedException("Invalid credentials");
@@ -120,8 +118,7 @@ export class AuthService {
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         const failedAttempts = (user.failedLoginAttempts ?? 0) + 1;
-
-        await this.userRepository.findByIdAndUpdate(user._id.toString(), {
+        await this.userService.findByIdAndUpdate(user._id.toString(), {
           failedLoginAttempts: failedAttempts,
         });
 
@@ -138,7 +135,7 @@ export class AuthService {
             Date.now() + LOCK_TIME_MINUTES * 60 * 1000
           );
 
-          await this.userRepository.findByIdAndUpdate(user._id.toString(), {
+          await this.userService.findByIdAndUpdate(user._id.toString(), {
             isLocked: true,
             lockUntil: lockUntilDate,
           });
@@ -149,7 +146,6 @@ export class AuthService {
             "EX",
             LOCK_TIME_MINUTES * 60
           );
-
           throw new ForbiddenException(
             "Account locked due to too many failed login attempts."
           );
@@ -158,7 +154,7 @@ export class AuthService {
         throw new UnauthorizedException("Invalid credentials");
       }
 
-      await this.userRepository.findByIdAndUpdate(user._id.toString(), {
+      await this.userService.findByIdAndUpdate(user._id.toString(), {
         failedLoginAttempts: 0,
         isLocked: false,
         lockUntil: null,

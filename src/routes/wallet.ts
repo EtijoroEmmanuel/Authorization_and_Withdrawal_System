@@ -2,6 +2,7 @@ import { Router } from "express";
 import { WalletService } from "../services/wallet";
 import { userAuth, AuthenticatedRequest } from "../middlewares/authMiddleware";
 import { Types } from "mongoose";
+import ErrorResponse from "../utils/errorResponse";
 
 const router = Router();
 const walletService = new WalletService();
@@ -11,10 +12,12 @@ router.get(
   userAuth,
   async (req: AuthenticatedRequest, res, next) => {
     try {
-      if (!req.user?.id) throw new Error("Unauthorized");
-
-      const userId = new Types.ObjectId(req.user.id);
+      const userId = new Types.ObjectId(req.user!.id);
       const wallet = await walletService.getWalletByUserId(userId);
+
+      if (!wallet) {
+        return next(new ErrorResponse("Wallet not found", 404));
+      }
 
       res.status(200).json({
         success: true,
