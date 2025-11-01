@@ -1,4 +1,4 @@
-import { Schema, model, InferSchemaType } from "mongoose";
+import { Schema, model, Types, InferSchemaType, Document } from "mongoose";
 
 export enum UserRole {
   USER = "user",
@@ -7,11 +7,7 @@ export enum UserRole {
 
 const userSchema = new Schema(
   {
-    fullName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    fullName: { type: String, required: true, trim: true },
     email: {
       type: String,
       required: true,
@@ -19,65 +15,26 @@ const userSchema = new Schema(
       lowercase: true,
       trim: true,
     },
-    password: {
-      type: String,
-      required: true,
-      minlength: 4,
-    },
+    password: { type: String, required: true, minlength: 4 },
     role: {
       type: String,
       enum: Object.values(UserRole),
       default: UserRole.USER,
     },
-    isLocked: {
-      type: Boolean,
-      default: false,
-    },
-    failedLoginAttempts: {
-      type: Number,
-      default: 0,
-    },
-    lockUntil: {
-      type: Date,
-      default: null,
-      required: false,
-    },
-    balance: {
-      ledger: { type: Number, default: 0 },
-      available: { type: Number, default: 0 },
-    },
-    lastLoginAttempt: {
-      type: Date,
-      default: null,
-      required: false,
-    },
-    lastLoginAttemptSuccessful: {
-      type: Boolean,
-      default: false,
-    },
-    lastLoginTimestamp: {
-      type: Date,
-      default: null,
-      required: false,
-    },
+    isLocked: { type: Boolean, default: false },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date, default: null },
+    wallet: { type: Schema.Types.ObjectId, ref: "Wallet", default: null },
+    lastLoginAttempt: { type: Date, default: null },
+    lastLoginAttemptSuccessful: { type: Boolean, default: false },
+    lastLoginTimestamp: { type: Date, default: null },
   },
   { timestamps: true }
 );
 
-export type UserType = InferSchemaType<typeof userSchema> & { _id: string };
+export type UserDocument = InferSchemaType<typeof userSchema> &
+  Document & {
+    _id: Types.ObjectId;
+  };
 
-export interface CreateUserInput {
-  fullName: string;
-  email: string;
-  password: string;
-  role?: UserRole;
-  isLocked?: boolean;
-  failedLoginAttempts?: number;
-  lockUntil?: Date | null;
-  balance?: { ledger: number; available: number };
-  lastLoginAttemptSuccessful?: boolean;
-  lastLoginAttempt?: Date | null;
-  lastLoginTimestamp?: Date | null;
-}
-
-export const User = model<UserType>("User", userSchema);
+export const User = model<UserDocument>("User", userSchema);

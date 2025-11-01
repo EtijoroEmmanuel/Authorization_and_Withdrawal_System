@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
-import { User, UserType, UserRole } from "../models/user";
-import { BaseRepository } from "../repositories/baseRepository";
+import { UserDocument, UserRole } from "../models/user";
+import { Wallet } from "../models/wallet";
 import { UserService } from "./user";
 import { SystemSettingService } from "./systemSettings";
 import { JWTUtil } from "../utils/jwt";
@@ -15,13 +15,11 @@ import {
 } from "../utils/exceptions";
 
 export class AuthService {
-  private userService: UserService;
-  private userRepository: BaseRepository<UserType>;
+  private userService: UserService; // ✅ use UserService
   private systemSettingService: SystemSettingService;
 
   constructor() {
     this.userService = new UserService();
-    this.userRepository = new BaseRepository<UserType>(User);
     this.systemSettingService = new SystemSettingService();
   }
 
@@ -34,23 +32,33 @@ export class AuthService {
       const { fullName, email, password } = req.body;
       const dbEmail = email.toLowerCase();
 
-      const existingUser = await this.userService.findByEmail(dbEmail);
+      const existingUser = await this.userService.findOne({ email: dbEmail });
       if (existingUser) throw new BadRequestException("Email already in use");
 
       const salt = await bcrypt.genSalt(env.AUTH.BCRYPT_SALT_ROUNDS);
       const hashedPassword = await bcrypt.hash(password, salt);
 
-      const user = await this.userService.createUser({
+      const user: UserDocument = await this.userService.create({
         fullName,
         email: dbEmail,
         password: hashedPassword,
         role: UserRole.USER,
         isLocked: false,
         failedLoginAttempts: 0,
-        balance: { ledger: 0, available: 0 },
-        lastLoginAttempt: null,
+        lastLoginAttempt: undefined,
         lastLoginAttemptSuccessful: false,
-        lastLoginTimestamp: null,
+        lastLoginTimestamp: undefined,
+      });
+
+      const wallet = await Wallet.create({
+        user: user._id,
+        ledger: 0,
+        available: 0,
+        currency: "NGN",
+      });
+
+      await this.userService.findByIdAndUpdate(user._id.toString(), {
+        wallet: wallet._id,
       });
 
       res.status(201).json({
@@ -59,6 +67,7 @@ export class AuthService {
           id: user._id,
           fullName: user.fullName,
           email: user.email,
+          walletId: wallet._id,
         },
       });
     } catch (error) {
@@ -71,7 +80,9 @@ export class AuthService {
       const { email, password } = req.body;
       const dbEmail = email.toLowerCase();
 
-      const user = await this.userService.findByEmail(dbEmail);
+      const user: UserDocument | null = await this.userService.findOne({
+        email: dbEmail,
+      });
       if (!user) throw new UnauthorizedException("Invalid credentials");
 
       const settings = await this.systemSettingService.getSettings();
@@ -107,8 +118,7 @@ export class AuthService {
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         const failedAttempts = (user.failedLoginAttempts ?? 0) + 1;
-
-        await this.userRepository.findByIdAndUpdate(user._id.toString(), {
+        await this.userService.findByIdAndUpdate(user._id.toString(), {
           failedLoginAttempts: failedAttempts,
         });
 
@@ -125,7 +135,7 @@ export class AuthService {
             Date.now() + LOCK_TIME_MINUTES * 60 * 1000
           );
 
-          await this.userRepository.findByIdAndUpdate(user._id.toString(), {
+          await this.userService.findByIdAndUpdate(user._id.toString(), {
             isLocked: true,
             lockUntil: lockUntilDate,
           });
@@ -136,7 +146,6 @@ export class AuthService {
             "EX",
             LOCK_TIME_MINUTES * 60
           );
-
           throw new ForbiddenException(
             "Account locked due to too many failed login attempts."
           );
@@ -145,7 +154,7 @@ export class AuthService {
         throw new UnauthorizedException("Invalid credentials");
       }
 
-      await this.userRepository.findByIdAndUpdate(user._id.toString(), {
+      await this.userService.findByIdAndUpdate(user._id.toString(), {
         failedLoginAttempts: 0,
         isLocked: false,
         lockUntil: null,
@@ -158,7 +167,7 @@ export class AuthService {
       await redisClient.del(lockKey);
 
       const token = JWTUtil.generateToken({
-        userId: user._id,
+        userId: user._id.toString(),
         role: user.role,
       });
 
