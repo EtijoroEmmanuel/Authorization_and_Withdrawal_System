@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { userAuth } from "../middlewares/authMiddleware";
+import { protect } from "../middlewares/authMiddleware";
 import { UserService } from "../services/user";
 import { asyncHandler } from "../middlewares/async";
 
@@ -8,7 +8,7 @@ const userService = new UserService();
 
 router.get(
   "/info",
-  userAuth,
+  protect,
   asyncHandler(userService.getUserInfo.bind(userService))
 );
 

@@ -10,9 +10,19 @@ export enum Currency {
 
 const walletSchema = new Schema(
   {
-    user: { type: Schema.Types.ObjectId, ref: User.name, required: true },
-    ledger: { type: Number, default: 0 },
-    available: { type: Number, default: 0 },
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: User.name,
+      required: true,
+    },
+    ledgerBalance: {
+      type: Number,
+      default: 0,
+    },
+    availableBalance: {
+      type: Number,
+      default: 0,
+    },
     currency: {
       type: String,
       enum: Object.values(Currency),

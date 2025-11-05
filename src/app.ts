@@ -20,7 +20,7 @@ app.use(morgan("dev"));
 
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/wallet", walletRoutes);
+app.use("/api/wallets", walletRoutes);
 
 app.get("/", (req: Request, res: Response) => {
   res.status(200).json({ success: true, message: `Welcome!` });

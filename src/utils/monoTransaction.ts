@@ -6,12 +6,8 @@ export async function withMongoTransaction<T>(
   const session = await mongoose.startSession();
 
   try {
-    let result: T | null = null;
-
-    await session.withTransaction(
-      async () => {
-        result = await callback(session);
-      },
+    const result = await session.withTransaction(
+      async () => await callback(session),
       {
         readPreference: "primary",
         writeConcern: { w: "majority" },
@@ -19,11 +15,7 @@ export async function withMongoTransaction<T>(
       }
     );
 
-    if (result === null) {
-      throw new Error("Transaction did not return a result");
-    }
-
-    return result;
+    return result!;
   } finally {
     await session.endSession();
   }

@@ -18,6 +18,12 @@ export class ForbiddenException extends ErrorResponse {
   }
 }
 
+export class ConflictException extends ErrorResponse {
+  constructor(message = "Conflict") {
+    super(message, 409);
+  }
+}
+
 export class NotFoundException extends ErrorResponse {
   constructor(message = "Not Found") {
     super(message, 404);

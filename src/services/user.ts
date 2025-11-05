@@ -47,8 +47,8 @@ export class UserService extends BaseRepository<UserDocument> {
           fullName: user.fullName,
           email: user.email,
           balance: {
-            ledger: wallet.ledger,
-            available: wallet.available,
+            ledgerBalance: wallet.ledgerBalance,
+            availableBalance: wallet.availableBalance,
             currency: wallet.currency,
           },
           lastLoginAttempt: user.lastLoginAttempt,

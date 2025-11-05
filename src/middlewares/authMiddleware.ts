@@ -1,7 +1,7 @@
-import { Request, RequestHandler } from "express";
+import { Request, Response, NextFunction, RequestHandler } from "express";
 import { JWTUtil } from "../utils/jwt";
 import { UnauthorizedException } from "../utils/exceptions";
-import { UserRole } from "../models/user";
+import { User, UserRole } from "../models/user";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -10,21 +10,36 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-export const userAuth: RequestHandler = (req, _res, next) => {
+export const protect = async (
+  req: AuthenticatedRequest,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    let token: string | undefined;
+
+    if (req.headers.authorization?.startsWith("Bearer ")) {
+      token = JWTUtil.extractTokenFromHeader(req.headers.authorization);
+    }
+
+    if (!token) {
       throw new UnauthorizedException(
-        "Invalid or missing Authorization header"
+        "You are not logged in. Please log in to continue."
       );
     }
 
-    const token = JWTUtil.extractTokenFromHeader(authHeader);
     const decoded = JWTUtil.verifyToken(token);
 
-    (req as AuthenticatedRequest).user = {
-      id: decoded.userId,
-      role: decoded.role as UserRole,
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      throw new UnauthorizedException(
+        "The user belonging to this token no longer exists."
+      );
+    }
+
+    req.user = {
+      id: user._id.toString(),
+      role: user.role as UserRole,
     };
 
     next();
@@ -37,8 +52,10 @@ export const authorizeRole =
   (roles: UserRole[]): RequestHandler =>
   (req, _res, next) => {
     const user = (req as AuthenticatedRequest).user;
+
     if (!user || !roles.includes(user.role)) {
       throw new UnauthorizedException("Insufficient permissions");
     }
+
     next();
   };
