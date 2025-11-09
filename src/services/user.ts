@@ -2,9 +2,9 @@ import { Response, NextFunction } from "express";
 import { BaseRepository } from "../repositories/baseRepository";
 import { User, UserDocument } from "../models/user";
 import { NotFoundException, UnauthorizedException } from "../utils/exceptions";
-import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 import { WalletService } from "./wallet";
 import mongoose from "mongoose";
+import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 
 export class UserService extends BaseRepository<UserDocument> {
   private walletService: WalletService;
@@ -20,26 +20,22 @@ export class UserService extends BaseRepository<UserDocument> {
     next: NextFunction
   ): Promise<void> {
     try {
-      
       if (!req.user?.id) {
         return next(new UnauthorizedException("Unauthorized"));
       }
 
       const userId = new mongoose.Types.ObjectId(req.user.id);
 
-      
       const user = await this.findById(userId);
       if (!user) {
         throw new NotFoundException("User not found");
       }
 
-      
       const wallet = await this.walletService.getWalletByUserId(userId);
       if (!wallet) {
         throw new NotFoundException("User wallet not found");
       }
 
-      
       res.status(200).json({
         success: true,
         data: {

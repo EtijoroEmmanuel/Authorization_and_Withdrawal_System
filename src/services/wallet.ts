@@ -2,8 +2,8 @@ import { Response, NextFunction } from "express";
 import { WalletRepository } from "../repositories/wallet";
 import { WalletDocument } from "../models/wallet";
 import { NotFoundException, UnauthorizedException } from "../utils/exceptions";
-import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 import { Types } from "mongoose";
+import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 
 export class WalletService {
   private walletRepository: WalletRepository;
@@ -20,7 +20,7 @@ export class WalletService {
   }
 
   async getWalletForUser(
-    req: AuthenticatedRequest,
+    req: AuthenticatedRequest, // ✅ use the custom type
     res: Response,
     next: NextFunction
   ): Promise<void> {
@@ -68,8 +68,10 @@ export class WalletService {
     if (!Types.ObjectId.isValid(walletId)) {
       throw new NotFoundException("Invalid wallet ID");
     }
+
     const wallet = await this.walletRepository.findById(walletId);
     if (!wallet) throw new NotFoundException("Wallet not found");
+
     return wallet;
   }
 }

@@ -29,8 +29,8 @@ export const protect = async (
     }
 
     const decoded = JWTUtil.verifyToken(token);
-
     const user = await User.findById(decoded.userId);
+
     if (!user) {
       throw new UnauthorizedException(
         "The user belonging to this token no longer exists."
@@ -48,14 +48,11 @@ export const protect = async (
   }
 };
 
-export const authorizeRole =
-  (roles: UserRole[]): RequestHandler =>
-  (req, _res, next) => {
-    const user = (req as AuthenticatedRequest).user;
-
-    if (!user || !roles.includes(user.role)) {
+export const authorizeRole = (roles: UserRole[]): RequestHandler => {
+  return (req: AuthenticatedRequest, _res: Response, next: NextFunction) => {
+    if (!req.user || !roles.includes(req.user.role)) {
       throw new UnauthorizedException("Insufficient permissions");
     }
-
     next();
   };
+};
