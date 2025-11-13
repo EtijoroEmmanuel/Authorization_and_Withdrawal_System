@@ -6,6 +6,8 @@ import cors from "cors";
 import morgan from "morgan";
 import userRoutes from "./routes/user";
 import authRoutes from "./routes/auth";
+import walletRoutes from "./routes/wallet";
+import transactionRoutes from "./routes/transaction";
 
 dotenv.config();
 const app = express();
@@ -19,6 +21,8 @@ app.use(morgan("dev"));
 
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/wallets", walletRoutes);
+app.use("/api/transactions", transactionRoutes);
 
 app.get("/", (req: Request, res: Response) => {
   res.status(200).json({ success: true, message: `Welcome!` });

@@ -1,27 +1,27 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
-import { User, UserType, UserRole } from "../models/user";
-import { BaseRepository } from "../repositories/baseRepository";
+import { UserDocument, UserRole } from "../models/user";
+import { Wallet } from "../models/wallet";
 import { UserService } from "./user";
 import { SystemSettingService } from "./systemSettings";
 import { JWTUtil } from "../utils/jwt";
 import { env } from "../config/env";
 import { redisClient } from "../utils/redis";
 import { formatDate } from "../utils/date";
+import { withMongoTransaction } from "../utils/monoTransaction";
 import {
   BadRequestException,
   UnauthorizedException,
   ForbiddenException,
+  ConflictException,
 } from "../utils/exceptions";
 
 export class AuthService {
   private userService: UserService;
-  private userRepository: BaseRepository<UserType>;
   private systemSettingService: SystemSettingService;
 
   constructor() {
     this.userService = new UserService();
-    this.userRepository = new BaseRepository<UserType>(User);
     this.systemSettingService = new SystemSettingService();
   }
 
@@ -34,31 +34,51 @@ export class AuthService {
       const { fullName, email, password } = req.body;
       const dbEmail = email.toLowerCase();
 
-      const existingUser = await this.userService.findByEmail(dbEmail);
-      if (existingUser) throw new BadRequestException("Email already in use");
+      const existingUser = await this.userService.findOne({ email: dbEmail });
+      if (existingUser) throw new ConflictException("Email already in use");
 
       const salt = await bcrypt.genSalt(env.AUTH.BCRYPT_SALT_ROUNDS);
       const hashedPassword = await bcrypt.hash(password, salt);
 
-      const user = await this.userService.createUser({
-        fullName,
-        email: dbEmail,
-        password: hashedPassword,
-        role: UserRole.USER,
-        isLocked: false,
-        failedLoginAttempts: 0,
-        balance: { ledger: 0, available: 0 },
-        lastLoginAttempt: null,
-        lastLoginAttemptSuccessful: false,
-        lastLoginTimestamp: null,
+      const result = await withMongoTransaction(async (session) => {
+        const user: UserDocument = await this.userService.create(
+          {
+            fullName,
+            email: dbEmail,
+            password: hashedPassword,
+            role: UserRole.USER,
+          },
+          session
+        );
+
+        const wallet = await Wallet.create(
+          [
+            {
+              user: user._id,
+              ledgerBalance: 0,
+              availableBalance: 0,
+              currency: "NGN",
+            },
+          ],
+          { session }
+        );
+
+        await this.userService.findByIdAndUpdate(
+          user._id.toString(),
+          { wallet: wallet[0]._id },
+          { session }
+        );
+
+        return { user, wallet: wallet[0] };
       });
 
       res.status(201).json({
         success: true,
         data: {
-          id: user._id,
-          fullName: user.fullName,
-          email: user.email,
+          id: result.user._id,
+          fullName: result.user.fullName,
+          email: result.user.email,
+          walletId: result.wallet._id,
         },
       });
     } catch (error) {
@@ -71,7 +91,9 @@ export class AuthService {
       const { email, password } = req.body;
       const dbEmail = email.toLowerCase();
 
-      const user = await this.userService.findByEmail(dbEmail);
+      const user: UserDocument | null = await this.userService.findOne({
+        email: dbEmail,
+      });
       if (!user) throw new UnauthorizedException("Invalid credentials");
 
       const settings = await this.systemSettingService.getSettings();
@@ -108,8 +130,10 @@ export class AuthService {
       if (!isMatch) {
         const failedAttempts = (user.failedLoginAttempts ?? 0) + 1;
 
-        await this.userRepository.findByIdAndUpdate(user._id.toString(), {
+        await this.userService.findByIdAndUpdate(user._id.toString(), {
           failedLoginAttempts: failedAttempts,
+          lastLoginAttempt: new Date(),
+          lastLoginAttemptSuccessful: false,
         });
 
         const attempts = await redisClient.incr(attemptsKey);
@@ -125,7 +149,7 @@ export class AuthService {
             Date.now() + LOCK_TIME_MINUTES * 60 * 1000
           );
 
-          await this.userRepository.findByIdAndUpdate(user._id.toString(), {
+          await this.userService.findByIdAndUpdate(user._id.toString(), {
             isLocked: true,
             lockUntil: lockUntilDate,
           });
@@ -145,7 +169,7 @@ export class AuthService {
         throw new UnauthorizedException("Invalid credentials");
       }
 
-      await this.userRepository.findByIdAndUpdate(user._id.toString(), {
+      await this.userService.findByIdAndUpdate(user._id.toString(), {
         failedLoginAttempts: 0,
         isLocked: false,
         lockUntil: null,
@@ -158,7 +182,7 @@ export class AuthService {
       await redisClient.del(lockKey);
 
       const token = JWTUtil.generateToken({
-        userId: user._id,
+        userId: user._id.toString(),
         role: user.role,
       });
 
@@ -170,9 +194,13 @@ export class AuthService {
             id: user._id,
             fullName: user.fullName,
             email: user.email,
-            lastLoginAttempt: formatDate(user.lastLoginAttempt ?? null),
+            lastLoginAttempt: user.lastLoginAttempt
+              ? formatDate(user.lastLoginAttempt)
+              : null,
             lastLoginAttemptSuccessful: user.lastLoginAttemptSuccessful,
-            lastLoginTimestamp: formatDate(user.lastLoginTimestamp ?? null),
+            lastLoginTimestamp: user.lastLoginTimestamp
+              ? formatDate(user.lastLoginTimestamp)
+              : null,
           },
         },
       });

@@ -1,4 +1,4 @@
-import { Schema, model, InferSchemaType } from "mongoose";
+import { Schema, model, Types, InferSchemaType, Document } from "mongoose";
 
 export enum UserRole {
   USER = "user",
@@ -32,19 +32,23 @@ const userSchema = new Schema(
     isLocked: {
       type: Boolean,
       default: false,
+      required: false,
     },
     failedLoginAttempts: {
       type: Number,
       default: 0,
+      required: false,
     },
     lockUntil: {
       type: Date,
       default: null,
       required: false,
     },
-    balance: {
-      ledger: { type: Number, default: 0 },
-      available: { type: Number, default: 0 },
+    wallet: {
+      type: Schema.Types.ObjectId,
+      ref: "Wallet",
+      default: null,
+      required: false,
     },
     lastLoginAttempt: {
       type: Date,
@@ -54,6 +58,7 @@ const userSchema = new Schema(
     lastLoginAttemptSuccessful: {
       type: Boolean,
       default: false,
+      required: false,
     },
     lastLoginTimestamp: {
       type: Date,
@@ -64,20 +69,9 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-export type UserType = InferSchemaType<typeof userSchema> & { _id: string };
+export type UserDocument = InferSchemaType<typeof userSchema> &
+  Document & {
+    _id: Types.ObjectId;
+  };
 
-export interface CreateUserInput {
-  fullName: string;
-  email: string;
-  password: string;
-  role?: UserRole;
-  isLocked?: boolean;
-  failedLoginAttempts?: number;
-  lockUntil?: Date | null;
-  balance?: { ledger: number; available: number };
-  lastLoginAttemptSuccessful?: boolean;
-  lastLoginAttempt?: Date | null;
-  lastLoginTimestamp?: Date | null;
-}
-
-export const User = model<UserType>("User", userSchema);
+export const User = model<UserDocument>("User", userSchema);

@@ -1,15 +1,15 @@
 import { Router } from "express";
 import { protect } from "../middlewares/authMiddleware";
-import { UserService } from "../services/user";
+import { WalletService } from "../services/wallet";
 import { asyncHandler } from "../middlewares/async";
 
 const router = Router();
-const userService = new UserService();
+const walletService = new WalletService();
 
 router.get(
-  "/info",
+  "/wallets/:id",
   protect,
-  asyncHandler(userService.getUserInfo.bind(userService))
+  asyncHandler(walletService.getWalletForUser.bind(walletService))
 );
 
 export default router;
